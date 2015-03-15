@@ -21,7 +21,7 @@ class WebsocketRunServer(WebsocketWSGIServer):
     WS_GUID = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
     WS_VERSIONS = ('13', '8', '7')
 
-    def upgrade_websocket(self, environ, start_response):
+    def upgrade_websocket(self, environ, start_response, user):
         """
         Attempt to upgrade the socket environ['wsgi.input'] into a websocket enabled connection.
         """
@@ -54,7 +54,7 @@ class WebsocketRunServer(WebsocketWSGIServer):
         logger.debug('WebSocket request accepted, switching protocols')
         start_response(force_str('101 Switching Protocols'), headers)
         six.get_method_self(start_response).finish_content()
-        return WebSocket(environ['wsgi.input'])
+        return WebSocket(environ['wsgi.input'], user)
 
     def select(self, rlist, wlist, xlist, timeout=None):
         return select.select(rlist, wlist, xlist, timeout)

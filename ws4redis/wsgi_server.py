@@ -72,7 +72,7 @@ class WebsocketWSGIServer(object):
             channels, echo_message = self.process_subscriptions(request)
             if callable(private_settings.WS4REDIS_ALLOWED_CHANNELS):
                 channels = list(private_settings.WS4REDIS_ALLOWED_CHANNELS(request, channels))
-            websocket = self.upgrade_websocket(environ, start_response)
+            websocket = self.upgrade_websocket(environ, start_response, request.user)
             logger.debug('Subscribed to channels: {0}'.format(', '.join(channels)))
             subscriber.set_pubsub_channels(request, channels)
             websocket_fd = websocket.get_file_descriptor()
@@ -83,6 +83,10 @@ class WebsocketWSGIServer(object):
             subscriber.send_persited_messages(websocket)
             recvmsg = None
             while websocket and not websocket.closed:
+                # If five message heartbeats are missing, then
+                # close socket connexion
+                if not websocket.is_active():
+                    websocket.close()
                 ready = self.select(listening_fds, [], [], 4.0)[0]
                 if not ready:
                     # flush empty socket
@@ -91,7 +95,12 @@ class WebsocketWSGIServer(object):
                     if fd == websocket_fd:
                         recvmsg = RedisMessage(websocket.receive())
                         if recvmsg:
-                            subscriber.publish_message(recvmsg)
+                            # If message received is Heartbeat
+                            if recvmsg == settings.WS4REDIS_HEARTBEAT:
+                                # Then update the last time socket was active
+                                websocket.reset_last_seen()
+                            else:
+                                subscriber.publish_message(recvmsg)
                     elif fd == redis_fd:
                         sendmsg = RedisMessage(subscriber.parse_response())
                         if sendmsg and (echo_message or sendmsg != recvmsg):

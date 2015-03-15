@@ -3,14 +3,14 @@
 # written by Jeffrey Gelens (http://noppo.pro/) and licensed under the Apache License, Version 2.0
 import six
 import struct
+from datetime import datetime, timedelta 
 from socket import error as socket_error
 from django.core.handlers.wsgi import logger
 from ws4redis.utf8validator import Utf8Validator
 from ws4redis.exceptions import WebSocketError, FrameTooLargeException
 
-
 class WebSocket(object):
-    __slots__ = ('_closed', 'stream', 'utf8validator', 'utf8validate_last')
+    __slots__ = ('_closed', '_last_seen', 'stream', 'utf8validator', 'utf8validate_last', 'user')
 
     OPCODE_CONTINUATION = 0x00
     OPCODE_TEXT = 0x01
@@ -19,10 +19,12 @@ class WebSocket(object):
     OPCODE_PING = 0x09
     OPCODE_PONG = 0x0a
 
-    def __init__(self, wsgi_input):
+    def __init__(self, wsgi_input, user):
         self._closed = False
+        self._last_seen = datetime.now()
         self.stream = Stream(wsgi_input)
         self.utf8validator = Utf8Validator()
+        self.user = user
 
     def __del__(self):
         try:
@@ -78,6 +80,12 @@ class WebSocket(object):
     @property
     def closed(self):
         return self._closed
+
+    def reset_last_seen(self):
+        self._last_seen = datetime.now()
+
+    def is_active(self):
+        return datetime.now() - self._last_seen <= timedelta(seconds=25)
 
     def handle_close(self, header, payload):
         """
@@ -248,6 +256,13 @@ class WebSocket(object):
         message.  The underlying socket object is _not_ closed, that is the
         responsibility of the initiator.
         """
+        
+        #        print "User " + str(self.user) + " disconnected"
+        try:
+            settings.DISCONNECTION_HANDLER(self.user)
+        except:
+            pass
+
         try:
             message = self._encode_bytes(message)
             self.send_frame(

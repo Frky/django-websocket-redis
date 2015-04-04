@@ -85,8 +85,8 @@ class WebsocketWSGIServer(object):
             while websocket and not websocket.closed:
                 # If five message heartbeats are missing, then
                 # close socket connexion
-                if not websocket.is_active():
-                    websocket.close()
+                # if not websocket.is_active():
+                #    websocket.close()
                 ready = self.select(listening_fds, [], [], 4.0)[0]
                 if not ready:
                     # flush empty socket

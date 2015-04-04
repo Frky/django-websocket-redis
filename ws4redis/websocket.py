@@ -8,6 +8,7 @@ from socket import error as socket_error
 from django.core.handlers.wsgi import logger
 from ws4redis.utf8validator import Utf8Validator
 from ws4redis.exceptions import WebSocketError, FrameTooLargeException
+from django.conf import settings
 
 class WebSocket(object):
     __slots__ = ('_closed', '_last_seen', 'stream', 'utf8validator', 'utf8validate_last', 'user')
@@ -257,8 +258,9 @@ class WebSocket(object):
         responsibility of the initiator.
         """
         
-        #        print "User " + str(self.user) + " disconnected"
         try:
+            # If a handler has been defined in the settings, call it
+            # to notify disconnection of user
             settings.DISCONNECTION_HANDLER(self.user)
         except:
             pass

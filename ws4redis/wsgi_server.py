@@ -62,13 +62,19 @@ class WebsocketWSGIServer(object):
         return agreed_channels, echo_message
 
     def __call__(self, environ, start_response):
-        """ Hijack the main loop from the original thread and listen on events on Redis and Websockets"""
+        """
+        Hijack the main loop from the original thread and listen on events on the Redis
+        and the Websocket filedescriptors.
+        """
         websocket = None
         subscriber = self.Subscriber(self._redis_connection)
         try:
             self.assure_protocol_requirements(environ)
             request = WSGIRequest(environ)
-            self.process_request(request)
+            if callable(private_settings.WS4REDIS_PROCESS_REQUEST):
+                private_settings.WS4REDIS_PROCESS_REQUEST(request)
+            else:
+                self.process_request(request)
             channels, echo_message = self.process_subscriptions(request)
             if callable(private_settings.WS4REDIS_ALLOWED_CHANNELS):
                 channels = list(private_settings.WS4REDIS_ALLOWED_CHANNELS(request, channels))
@@ -110,28 +116,30 @@ class WebsocketWSGIServer(object):
                 if private_settings.WS4REDIS_HEARTBEAT:
                     websocket.send(private_settings.WS4REDIS_HEARTBEAT)
         except WebSocketError as excpt:
-            logger.warning('WebSocketError: ', exc_info=sys.exc_info())
+            logger.warning('WebSocketError: {}'.format(excpt), exc_info=sys.exc_info())
             response = http.HttpResponse(status=1001, content='Websocket Closed')
         except UpgradeRequiredError as excpt:
             logger.info('Websocket upgrade required')
             response = http.HttpResponseBadRequest(status=426, content=excpt)
         except HandshakeError as excpt:
-            logger.warning('HandshakeError: ', exc_info=sys.exc_info())
+            logger.warning('HandshakeError: {}'.format(excpt), exc_info=sys.exc_info())
             response = http.HttpResponseBadRequest(content=excpt)
         except PermissionDenied as excpt:
-            logger.warning('PermissionDenied: ', exc_info=sys.exc_info())
+            logger.warning('PermissionDenied: {}'.format(excpt), exc_info=sys.exc_info())
             response = http.HttpResponseForbidden(content=excpt)
         except Exception as excpt:
-            logger.error('Other Exception: ', exc_info=sys.exc_info())
+            logger.error('Other Exception: {}'.format(excpt), exc_info=sys.exc_info())
             response = http.HttpResponseServerError(content=excpt)
         else:
             response = http.HttpResponse()
-        if websocket:
-            websocket.close(code=1001, message='Websocket Closed')
-        if hasattr(start_response, 'im_self') and not start_response.im_self.headers_sent:
-            logger.warning('Staring late response on websocket')
-            status_text = STATUS_CODE_TEXT.get(response.status_code, 'UNKNOWN STATUS CODE')
-            status = '{0} {1}'.format(response.status_code, status_text)
-            start_response(force_str(status), response._headers.values())
-        logger.info('Finish long living response with status code: '.format(response.status_code))
+        finally:
+            subscriber.release()
+            if websocket:
+                websocket.close(code=1001, message='Websocket Closed')
+            else:
+                logger.warning('Starting late response on websocket')
+                status_text = STATUS_CODE_TEXT.get(response.status_code, 'UNKNOWN STATUS CODE')
+                status = '{0} {1}'.format(response.status_code, status_text)
+                start_response(force_str(status), response._headers.values())
+                logger.info('Finish non-websocket response with status code: {}'.format(response.status_code))
         return response

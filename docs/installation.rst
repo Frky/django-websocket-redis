@@ -43,10 +43,10 @@ any database synchronization.
 Dependencies
 ------------
 * Django_ >=1.5
-* `Python client for Redis`_
-* uWSGI_ >= 1.9.20
-* gevent_ >=1.0
-* greenlet_ >=0.4.1
+* redis >=2.10.3 (a `Python client for Redis`_)
+* uWSGI_ >=1.9.20
+* gevent_ >=1.0.1
+* greenlet_ >=0.4.5
 * optional, but recommended: wsaccel_ >=0.6
 
 
@@ -152,8 +152,10 @@ One simply broadcasts messages to every client listening on that same websocket 
 chat server can be used to send messages to specific users logged into the system. Use these
 demos as a starting point for your application.
 
+
 Replace memcached with Redis
 ============================
+
 Since Redis has to be added as an additional service to the current infrastructure, at least
 another service can be safely removed: *memcached*. This is required by typical Django installations
 and is used for caching and session storage.

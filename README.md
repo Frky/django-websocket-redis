@@ -11,15 +11,13 @@ Websockets for Django using Redis as message queue
 --------------------------------------------------
 This module implements websockets on top of Django without requiring any additional framework. For
 messaging it uses the [Redis](http://redis.io/) datastore and in a production environment, it is
-intended to work under [uWSGI](http://projects.unbit.it/uwsgi/) and behind [NGiNX](http://nginx.com/).
+intended to work under [uWSGI](http://projects.unbit.it/uwsgi/) and behind [NGiNX](http://nginx.com/)
+or [Apache](http://httpd.apache.org/docs/2.4/mod/mod_proxy_wstunnel.html) version 2.4.5 or later.
 
-New in 0.4.2
+New in 0.4.4
 ------------
-* Message echoing can be switched “on” and “off” according to the user needs. Before it was “on” by
-  default.
-* Many changes to become compatible with Python3; there are still minor issues to solve.
-* The message string to be passed and stored to and from the websocket hase been converted into
-  a class ``RedisMessage`` for type saftey.
+* Added method ``release()`` to ``RedisSubscriber`` and calling this method each time a Websocket
+  closes, for whatever reason. This should avoid some reported memory issues.
 
 Features
 --------
@@ -29,12 +27,19 @@ Features
 * Full control over this seperate main loop during development, so **Django** can be started as usual with
   ``./manage.py runserver``.
 * No dependency to any other asynchronous event driven framework, such as Tornado, Twisted or
-  Node.js.
-* Normal Django requests communicate with this seperate main loop through **Redis**, which by the way is a good
+  Socket.io/Node.js.
+* Normal Django requests communicate with this seperate main loop through **Redis** which, by the way is a good
   replacement for memcached.
 * Optionally persiting messages, allowing server reboots and client reconnections.
 
-If unsure, if this proposed architecture is the correct approach on how to integrate websockets with Django, then please read Roberto De Ioris article about [Offloading Websockets and Server-Sent Events AKA “Combine them with Django safely”](http://uwsgi-docs.readthedocs.org/en/latest/articles/OffloadingWebsocketsAndSSE.html).
+If unsure, if this proposed architecture is the correct approach on how to integrate Websockets with Django, then
+please read Roberto De Ioris article about
+[Offloading Websockets and Server-Sent Events AKA “Combine them with Django safely”](http://uwsgi-docs.readthedocs.org/en/latest/articles/OffloadingWebsocketsAndSSE.html).
+
+Please also consider, that whichever alternative technology you use, you always need a message queue,
+so that the Django application can “talk” to the browser. This is because the only link between the browser and
+the server is through the Websocket and thus, by definition a long living connection. For scalability reasons you
+can't start a Django server thread for each of these connections.
 
 Build status
 ------------

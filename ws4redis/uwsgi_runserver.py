@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import gevent.select
 from ws4redis.exceptions import WebSocketError
 from ws4redis.wsgi_server import WebsocketWSGIServer
+from django.conf import settings
 
 
 class uWSGIWebsocket(object):
@@ -51,7 +52,7 @@ class uWSGIWebsocket(object):
         try:
             # If a handler has been defined in the settings, call it
             # to notify disconnection of user
-            settings.DISCONNECTION_HANDLER(self.user)
+            settings.DISCONNECTION_HANDLER(self._user)
         except:
             pass
 

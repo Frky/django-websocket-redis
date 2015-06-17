@@ -257,6 +257,8 @@ class WebSocket(object):
         message.  The underlying socket object is _not_ closed, that is the
         responsibility of the initiator.
         """
+        if self._closed:
+            return
         try:
             # If a handler has been defined in the settings, call it
             # to notify disconnection of user

@@ -26,8 +26,6 @@ class WebSocket(object):
         self.stream = Stream(wsgi_input)
         self.utf8validator = Utf8Validator()
         self.user = user
-        user.nb_ws += 1
-        user.save()
 
     def __del__(self):
         try:
@@ -259,9 +257,6 @@ class WebSocket(object):
         message.  The underlying socket object is _not_ closed, that is the
         responsibility of the initiator.
         """
-        user = User.objects.get(id=self.user.id)
-        user.nb_ws -= 1
-        user.save()
         try:
             # If a handler has been defined in the settings, call it
             # to notify disconnection of user
